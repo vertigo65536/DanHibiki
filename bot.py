@@ -4,7 +4,6 @@ from fuzzywuzzy import fuzz, process
 from discord.utils import get
 from bs4 import BeautifulSoup
 
-import urllib.request as urllib2
 from graphqlclient import GraphQLClient
 
 load_dotenv()
