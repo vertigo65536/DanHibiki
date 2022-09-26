@@ -1,7 +1,11 @@
-import os, re, discord
+import os, re, discord, json, requests
 from dotenv import load_dotenv
 from fuzzywuzzy import fuzz, process
 from discord.utils import get
+from bs4 import BeautifulSoup
+
+import urllib.request as urllib2
+from graphqlclient import GraphQLClient
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -63,6 +67,52 @@ async def iam(message, amNot=False):
         else:
             return
 
+def getNextEvents(callType=0):
+    if callType not in [0,1,2]:
+        callType = 0
+    phaseId = 123456
+    #sheetsKey = 'YOUR_SHEETS_KEY'
+    authToken = os.getenv('STARTGG_TOKEN')
+    apiVersion = 'alpha'
+    toID = "0f5d35a8"
+
+    client = GraphQLClient('https://api.start.gg/gql/' + apiVersion)
+    client.inject_token('Bearer ' + authToken)
+
+    result = client.execute('''
+    query TournamentsByOwner($perPage: Int!, $ownerId: ID!) {
+        tournaments(query: {
+            perPage: $perPage
+            filter: {
+                ownerId: $ownerId
+            }
+        }) {
+        nodes {
+            id
+            name
+            slug
+        }
+      }
+    }''',
+    {
+      "ownerId": int(os.getenv('SMBF_ID')),
+      "perPage": 4
+    })
+
+    resData = json.loads(result)
+    outputString = ""
+    for event in reversed(resData['data']['tournaments']['nodes']):
+        if callType == 2:
+            if "sodium showdown" not in event['name'].lower():
+                continue
+        outputString += event['name'] + "\nhttp://smash.gg/" + event['slug'] + "\n \n"
+        if callType == 1:
+            break
+    if callType == 2 and outputString == "":
+        outputString == "No date announced for next Sodium yet!"
+    return outputString
+
+
 
 async def handleMessage(message):
     command = message.content.split(" ")[0]
@@ -77,6 +127,12 @@ async def handleMessage(message):
         return await iam(message)
     if command in ["!iamn", "!iamnot"]:
         return await iam(message, True)
+    if command == "!nextevents":
+        return getNextEvents()
+    if command == "!nextevent":
+        return getNextEvents(1)
+    if command in ["!sodium", "!nextsodium"]:
+        return getNextEvents(2)
     if command == "!hi":
         return "https://c.tenor.com/odArHt0HeUwAAAAd/street-fighter-dan-hibiki.gif"
     return
