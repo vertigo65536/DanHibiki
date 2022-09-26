@@ -27,9 +27,44 @@ def fighterRoles(ctx):
             availableRoles.append(allRoles[i])
     return availableRoles
 
+async def iam(message, amNot=False):
+        availableRoles = fighterRoles(message.author)
+        messageSplit = message.content.split(" ")
+        if len(messageSplit) == 1:
+            return "Requires a role"
+        del messageSplit[0]
+        roleList = " ".join(messageSplit).split(",")
+        checkedRoleList = []
+        key = {}
+        for i in range(len(availableRoles)):
+            checkedRoleList.append(availableRoles[i][0])
+            current = len(checkedRoleList) - 1
+            checkedRoleList[current] = checkedRoleList[current].lower().replace("fighters", "").strip()
+            key[checkedRoleList[current]] = availableRoles[i]
+        if amNot == False:
+            returnString = "Roles Given: "
+        elif amNot == True:
+            returnString = "Roles Removed: "
+        setFlag = 0
+        for i in range(len(roleList)):
+            roleList[i] = roleList[i].lower().replace("fighters", "").replace("fighter", "").strip()
+            roleList[i] = roleList[i].replace("sfiv", "sf4").replace("sf5", "sfv")
+            matchCheck = process.extract(roleList[i], checkedRoleList, scorer=fuzz.ratio)
+            bestFit = key[matchCheck[0][0]]
+            if matchCheck[0][1] > 80:
+                if amNot == False:
+                    await message.author.add_roles(message.guild.get_role(bestFit[1]))
+                elif amNot == True:
+                    await message.author.remove_roles(message.guild.get_role(bestFit[1]))
+                setFlag = 1
+                returnString += bestFit[0] + ", "
+        if setFlag == 1:
+            return returnString
+        else:
+            return
+
 
 async def handleMessage(message):
-    print(message.content)
     command = message.content.split(" ")[0]
     command = command.lower()
     if command == "!roles":
@@ -39,30 +74,9 @@ async def handleMessage(message):
             returnStr += "\n" + availableRoles[i][0]
         return returnStr
     if command == "!iam":
-        availableRoles = fighterRoles(message.author)
-        messageSplit = message.content.split(" ")
-        if len(messageSplit) == 1:
-            return "Requires a role"
-        del messageSplit[0]
-        roleList = " ".join(messageSplit).split(",")
-        print(roleList)
-        checkedRoleList = []
-        key = {}
-        for i in range(len(availableRoles)):
-            checkedRoleList.append(availableRoles[i][0])
-            current = len(checkedRoleList) - 1
-            checkedRoleList[current] = checkedRoleList[current].lower().replace("fighters", "").strip()
-            key[checkedRoleList[current]] = availableRoles[i]
-        returnString = "Roles Given: "
-        for i in range(len(roleList)):
-            roleList[i] = roleList[i].lower().replace("fighters", "").replace("fighter", "").strip()
-            matchCheck = process.extract(roleList[i], checkedRoleList, scorer=fuzz.ratio)
-            print(matchCheck)
-            bestFit = key[matchCheck[0][0]]
-            if matchCheck[0][1] > 80:
-                await message.author.add_roles(message.guild.get_role(bestFit[1]))
-                returnString += bestFit[0] + ", "
-        return returnString
+        return await iam(message)
+    if command in ["!iamn", "!iamnot"]:
+        return await iam(message, True)
     if command == "!hi":
         return "https://c.tenor.com/odArHt0HeUwAAAAd/street-fighter-dan-hibiki.gif"
     return
@@ -76,9 +90,6 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    for r in message.author.guild.roles:
-        print(r.name + " - " + str(r.id))
-    #print(roles(message.author))
     #handleMessage(message)
     response = await handleMessage(message)
     if response != "" and response != None:
