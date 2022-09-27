@@ -1,4 +1,4 @@
-import os, re, discord, json, requests
+import os, re, discord, json, requests, time
 from dotenv import load_dotenv
 from fuzzywuzzy import fuzz, process
 from discord.utils import get
@@ -90,6 +90,7 @@ def getNextEvents(callType=0):
             id
             name
             slug
+            startAt
         }
       }
     }''',
@@ -97,10 +98,11 @@ def getNextEvents(callType=0):
       "ownerId": int(os.getenv('SMBF_ID')),
       "perPage": 4
     })
-
     resData = json.loads(result)
     outputString = ""
     for event in reversed(resData['data']['tournaments']['nodes']):
+        if time.time() > event['startAt']:
+            continue
         if callType == 2:
             if "sodium showdown" not in event['name'].lower():
                 continue
