@@ -1,4 +1,5 @@
 import os, re, discord, json, requests, time
+import random
 from dotenv import load_dotenv
 from fuzzywuzzy import fuzz, process
 from discord.utils import get
@@ -113,7 +114,22 @@ def getNextEvents(callType=0):
         outputString == "No date announced for next Sodium yet!"
     return outputString
 
-
+def randomStreetFighter():
+    sfgames = [
+            "Street Fighter 1",
+            "Street Fighter 2: Hyper Fighting",
+            "Super Street Fighter 2: Turbo",
+            "Street Fighter Alpha 1",
+            "Street Fighter Alpha 2",
+            "Street Fighter Alpha 3",
+            "Street Fighter 3: New Generation",
+            "Street Fighter 3: Second Impact",
+            "Street Fighter 3: Third Strike",
+            "Ultra Street Fighter 4: Edition Select",
+            "Street Fighter V (Cringe)",
+            "Street Fighter 6"
+        ]
+    return sfgames[random.randint(0, len(sfgames)-1)]
 
 async def handleMessage(message):
     command = message.content.split(" ")[0]
@@ -136,6 +152,8 @@ async def handleMessage(message):
         return getNextEvents(2)
     if command == "!hi":
         return "https://c.tenor.com/odArHt0HeUwAAAAd/street-fighter-dan-hibiki.gif"
+    if command == "!rsf":
+        return randomStreetFighter()
     return
 
 @client.event
