@@ -16,9 +16,9 @@ client = discord.Client(intents=intents)
 json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "db.json")
 
 def isAdmin(message):
-    with open(json_path, "r") as file:
-        data = json.load(file)
     try:
+        with open(json_path, "r") as file:
+            data = json.load(file)
         admin_role = data[str(message.guild.id)]['admin_role']
     except:
         return -1
@@ -28,9 +28,9 @@ def isAdmin(message):
     return False
 
 def fetchDB(message, key):
-    with open(json_path, "r") as file:
-        data = json.load(file)
     try:
+        with open(json_path, "r") as file:
+            data = json.load(file)
         return data[str(message.guild.id)][key]
     except:
         return -1
