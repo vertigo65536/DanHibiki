@@ -154,7 +154,7 @@ def fighterRoles(message):
 async def iam(message, amNot=False):
         if fetchDB(message, 'type') != 'auto':
             return "Bot running in react mode."
-        availableRoles = fighterRoles(message.author)
+        availableRoles = fighterRoles(message)
         messageSplit = message.content.split(" ")
         if len(messageSplit) == 1:
             return "Requires a role"
