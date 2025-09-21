@@ -1,11 +1,11 @@
-import os, re, discord, json, requests, time
+import os, re, discord, json, requests, time, asyncio
 import random
 from dotenv import load_dotenv
 from fuzzywuzzy import fuzz, process
 from discord.utils import get
 from bs4 import BeautifulSoup
 
-from graphqlclient import GraphQLClient
+#from graphqlclient import GraphQLClient
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -13,7 +13,126 @@ OCR = os.getenv('OCR_SPACE')
 intents = discord.Intents.all()
 intents.members = True
 client = discord.Client(intents=intents)
+json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "db.json")
 
+def isAdmin(message):
+    with open(json_path, "r") as file:
+        data = json.load(file)
+    try:
+        admin_role = data[str(message.guild.id)]['admin_role']
+    except:
+        return -1
+    for role in message.author.roles:
+        if str(role.id) == str(admin_role):
+            return True
+    return False
+
+def fetchDB(message, key):
+    with open(json_path, "r") as file:
+        data = json.load(file)
+    try:
+        return data[str(message.guild.id)][key]
+    except:
+        return -1
+
+def updateDB(jsonData):
+    try:
+        open(json_path, "x")
+    except:
+        print("file exists")
+    with open(json_path, "r") as file:
+        try:
+            data = json.load(file)
+        except:
+            data = {}
+    server_id = str(jsonData['server'])
+    del jsonData['server']
+    if server_id in data.keys() and jsonData['keep_roles'] == 1:
+        for key in jsonData.keys():
+            if key != 'keep_roles':
+                data[server_id][key] = jsonData[key]
+        redundantKeys=[]
+        for key in data[server_id]:
+            if key not in jsonData.keys() and key != "roles":
+                redundantKeys.append(key)
+        for i in range(len(redundantKeys)):
+            del data[server_id][redundantKeys[i]]
+    else:
+        data[server_id] = jsonData
+    with open(json_path, "w") as file:
+        print(data)
+        json.dump(data, file)
+
+async def yesno(channel, message_content):
+    def react_check(reaction, user):
+        return str(reaction.emoji) in ["\U00002705", "\U0000274c"]
+
+    bot_msg = await channel.send(message_content)
+    await bot_msg.add_reaction("\U00002705")
+    await bot_msg.add_reaction("\U0000274c")
+    try:
+        react, user = await client.wait_for('reaction_add', check = react_check)
+        if react.emoji == "\U00002705":
+            return True
+        else:
+            return False
+    except asyncio.TimeoutError:
+        await msg.channel.send("You did not react within 60 seconds.")
+        return -1
+
+
+async def setup(message):
+    bot_msg = await message.channel.send("Reply to this message with the role which should be considered admin.")
+    def check(m):
+        if m.reference is not None:
+            return m.reference.message_id == bot_msg.id
+    jsonData = {
+            "server":           message.guild.id,
+            "keep_roles":       1
+            }
+    while True:
+        msg = await client.wait_for('message', check=check)
+        role_id=msg.content.replace("<@&", "").replace(">", "")
+        try:
+            role = discord.utils.get(message.guild.roles, id=int(role_id))
+            if role != None:
+                jsonData['admin_role'] = role_id
+                break
+        except:
+            print(-1)
+        bot_msg = await message.channel.send("Reply to this message with ONLY a linked role, to be used as admin.")
+    await msg.channel.send("Admin set to <@&"+role_id+">")
+    react_mode = await yesno(msg.channel, "Use bot in react mode, or auto mode? react ✅ for react, or ❌ for auto.")
+    if react_mode == -1:
+        return
+    elif react_mode == True:
+        jsonData['type'] = 'react'
+        keep_roles = await yesno(msg.channel, "Keep any existing roles?")
+        if keep_roles == -1:
+            return
+        else:
+            jsonData['keep_roles'] = keep_roles
+        bot_msg = await msg.channel.send("Reply to this message with the channel to be used as the role channel.")
+        while True:
+            msg = await client.wait_for('message', check=check)
+            channel_id = msg.content.replace("<#", "").replace(">", "")
+            try:
+                channel = discord.utils.get(message.guild.channels, id=int(channel_id))
+                if channel != None:
+                    jsonData['role_channel'] = channel_id
+                    break
+            except:
+                print(-1)
+            bot_msg = await message.channel.send("Reply to this message with ONLY a linked channel, to be used as the role channel.")
+        await message.channel.send("Creating role post in <#"+channel_id+">")
+        msg = await channel.send("React here to set your roles. Available roles:")
+        jsonData['role_post'] = msg.id
+    else:
+        jsonData['type'] = 'auto'
+        bot_msg = await msg.channel.send("Reply to this message with the role suffix.")
+        msg = await client.wait_for('message', check=check)
+        jsonData['suffix'] = msg.content
+    updateDB(jsonData)
 def roles(ctx):
     i = 0
     roleList = []
@@ -22,16 +141,19 @@ def roles(ctx):
         i+=1
     return roleList
 
-def fighterRoles(ctx):
-    allRoles = roles(ctx)
+def fighterRoles(message):
+    allRoles = roles(message.author)
+    suffix = fetchDB(message, 'suffix')
     availableRoles = []
     for i in range(len(allRoles)):
         roleNameSplit = allRoles[i][0].lower().split(" ")
-        if roleNameSplit[len(roleNameSplit)-1] == "fighters":
+        if roleNameSplit[len(roleNameSplit)-1] == suffix:
             availableRoles.append(allRoles[i])
     return availableRoles
 
 async def iam(message, amNot=False):
+        if fetchDB(message, 'key') != 'auto':
+            return "Bot running in react mode."
         availableRoles = fighterRoles(message.author)
         messageSplit = message.content.split(" ")
         if len(messageSplit) == 1:
@@ -40,10 +162,13 @@ async def iam(message, amNot=False):
         roleList = " ".join(messageSplit).split(",")
         checkedRoleList = []
         key = {}
+        suffix = fetchDB(message, 'suffix')
+        if suffix == -1:
+            return "run !setup"
         for i in range(len(availableRoles)):
             checkedRoleList.append(availableRoles[i][0])
             current = len(checkedRoleList) - 1
-            checkedRoleList[current] = checkedRoleList[current].lower().replace("fighters", "").strip()
+            checkedRoleList[current] = checkedRoleList[current].lower().replace(suffix, "").strip()
             key[checkedRoleList[current]] = availableRoles[i]
         if amNot == False:
             returnString = "Roles Given: "
@@ -51,7 +176,7 @@ async def iam(message, amNot=False):
             returnString = "Roles Removed: "
         setFlag = 0
         for i in range(len(roleList)):
-            roleList[i] = roleList[i].lower().replace("fighters", "").replace("fighter", "").strip()
+            roleList[i] = roleList[i].lower().replace(suffix, "").replace("fighter", "").strip()
             roleList[i] = roleList[i].replace("sfiv", "sf4").replace("sf5", "sfv")
             matchCheck = process.extract(roleList[i], checkedRoleList, scorer=fuzz.ratio)
             bestFit = key[matchCheck[0][0]]
@@ -134,8 +259,17 @@ def randomStreetFighter():
 async def handleMessage(message):
     command = message.content.split(" ")[0]
     command = command.lower()
+    if command == "!test":
+        print(isAdmin(message))
+    if command == "!setup":
+        if isAdmin(message) != False:
+            return await setup(message)
+        else:
+            await message.channel.send("Not admin.")
     if command == "!roles":
-        availableRoles = fighterRoles(message.author)
+        if fetchDB(message, 'type') != "auto":
+            return "Bot running in react mode."
+        availableRoles = fighterRoles(message)
         returnStr = " \nAvailable Roles Are: "
         for i in range(len(availableRoles)):
             returnStr += "\n" + availableRoles[i][0]
