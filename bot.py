@@ -62,6 +62,10 @@ async def updateRolePost(message):
         role_message = await channel.send(new_message)
     for role, emoji in roles.items():
         await role_message.add_reaction(emoji)
+    for reaction in role_message.reactions:
+        if reaction.emoji not in roles.values():
+            async for user in reaction.users():
+                await reaction.remove(user)
     return role_message
 
 
