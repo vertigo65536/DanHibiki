@@ -207,14 +207,16 @@ async def setup(message):
             bot_msg = await message.channel.send("Reply to this message with ONLY a linked channel, to be used as the role channel.")
         await message.channel.send("Creating role post in <#"+channel_id+">")
         jsonData['role_post'] = msg.id
+        updateDB(jsonData)
+        msg = await updateRolePost(message)
     else:
         jsonData['type'] = 'auto'
-        bot_msg = await updateRolePost(message)
+        #bot_msg = await updateRolePost(message)
+        bot_msg = await message.channel.send("Reply to this post with the suffix used to identify available roles.")
         jsonData['role_post'] = bot_msg.id
         msg = await client.wait_for('message', check=check)
         jsonData['suffix'] = msg.content
-    updateDB(jsonData)
-    msg = await updateRolePost(message)
+        updateDB(jsonData)
 
 def roles(ctx):
     i = 0
