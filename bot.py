@@ -50,7 +50,7 @@ async def updateRolePost(message):
     message_id = fetchDB(message, 'role_post')
     channel_id = fetchDB(message, 'role_channel')
     channel = message.guild.get_channel(int(channel_id))
-    roles = fetchDB(message)['roles']
+    roles = fetchDB(message, 'roles')
     new_message = "React here to set your roles. Available roles:\n"
     print(roles)
     for role, emoji in roles.items():
@@ -206,7 +206,6 @@ async def setup(message):
                 print(-1)
             bot_msg = await message.channel.send("Reply to this message with ONLY a linked channel, to be used as the role channel.")
         await message.channel.send("Creating role post in <#"+channel_id+">")
-        msg = await updateRolePost(message)
         jsonData['role_post'] = msg.id
     else:
         jsonData['type'] = 'auto'
@@ -215,6 +214,7 @@ async def setup(message):
         msg = await client.wait_for('message', check=check)
         jsonData['suffix'] = msg.content
     updateDB(jsonData)
+    msg = await updateRolePost(message)
 
 def roles(ctx):
     i = 0
