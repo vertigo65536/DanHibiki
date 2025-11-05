@@ -355,7 +355,6 @@ def randomStreetFighter():
     return sfgames[random.randint(0, len(sfgames)-1)]
 
 async def honeypot(message):
-    print("honeypot")
     def check(m):
         if m.reference is not None:
             return m.reference.message_id == bot_msg.id
@@ -380,8 +379,11 @@ async def honeypot(message):
     HONEYPOT[message.guild.id] = channel_id
 
 async def handleMessage(message):
-    if str(message.channel.id) == HONEYPOT[str(message.guild.id)]:
-        await message.author.ban(reason="Posted in honeypot channel")
+    try:
+        if str(message.channel.id) == HONEYPOT[str(message.guild.id)]:
+            await message.author.ban(reason="Posted in honeypot channel")
+    except:
+        print("No honeypot set")
     command = message.content.split(" ")[0]
     command = command.lower()
     if command == "!addrole":
