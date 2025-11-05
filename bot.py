@@ -14,7 +14,16 @@ intents = discord.Intents.all()
 intents.members = True
 client = discord.Client(intents=intents)
 json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "db.json")
-
+HONEYPOT = {}
+try:
+    with open(json_path, "r") as file:
+        data = json.load(file)
+    for key, value in data.items():
+        print(value.items())
+        if "honeypot" in value.keys():
+            HONEYPOT[key] = value['honeypot']
+except:
+    print(-1)
 async def changeRole(message, user, emoji, remove = False):
     print(emoji)
     with open(json_path, 'r') as file:
@@ -345,7 +354,34 @@ def randomStreetFighter():
         ]
     return sfgames[random.randint(0, len(sfgames)-1)]
 
+async def honeypot(message):
+    print("honeypot")
+    def check(m):
+        if m.reference is not None:
+            return m.reference.message_id == bot_msg.id
+    jsonData = {
+            "server":           message.guild.id,
+            "keep_roles":       1
+            }
+    bot_msg = await message.channel.send("Reply to this message with the channel to be used as the bot honeypot.")
+    while True:
+        msg = await client.wait_for('message', check=check)
+        channel_id = msg.content.replace("<#", "").replace(">", "")
+        try:
+            channel = discord.utils.get(message.guild.channels, id=int(channel_id))
+            if channel != None:
+                jsonData['role_channel'] = channel_id
+                break
+        except:
+            print(-1)
+        bot_msg = await message.channel.send("Reply to this message with ONLY a linked channel, to be used as the bot honeypot.")
+    await channel.send("This channel is a bot honeypot.\n Do not post ANYTHING in here, you will automatically be banned.")
+    updateDBEntry(message, "honeypot", channel_id)
+    HONEYPOT[message.guild.id] = channel_id
+
 async def handleMessage(message):
+    if str(message.channel.id) == HONEYPOT[str(message.guild.id)]:
+        await message.author.ban(reason="Posted in honeypot channel")
     command = message.content.split(" ")[0]
     command = command.lower()
     if command == "!addrole":
@@ -362,6 +398,9 @@ async def handleMessage(message):
             return "Not Admin."
     if command == "!test":
         print(isAdmin(message))
+    if command == "!honeypot":
+        if isAdmin(message) != False:
+            return await honeypot(message)
     if command == "!setup":
         if isAdmin(message) != False:
             return await setup(message)
@@ -428,7 +467,6 @@ async def on_raw_reaction_remove(payload):
         if message.id == fetchDB(message, 'role_post'):
             await changeRole(message, user, payload.emoji, True)
 
-
 #@client.event
 #async def on_message_edit(before, after):
 #    if after.author == client.user:
@@ -440,5 +478,4 @@ async def on_raw_reaction_remove(payload):
 #@client.event
 #async def on_message_delete(message):
 #    await trophyProcess("delete", message)
-
 client.run(TOKEN)
