@@ -275,7 +275,7 @@ async def iam(message, amNot=False):
         setFlag = 0
         for i in range(len(roleList)):
             roleList[i] = roleList[i].lower().replace(suffix, "").replace("fighter", "").strip()
-            roleList[i] = roleList[i].replace("sfiv", "sf4").replace("sf5", "sfv")
+            roleList[i] = roleList[i].replace("sf4", "sfiv").replace("sf5", "sfv")
             matchCheck = process.extract(roleList[i], checkedRoleList, scorer=fuzz.ratio)
             bestFit = key[matchCheck[0][0]]
             if matchCheck[0][1] > 80:
