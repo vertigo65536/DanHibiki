@@ -350,7 +350,8 @@ def randomStreetFighter():
             "Street Fighter 3: Third Strike",
             "Ultra Street Fighter 4: Edition Select",
             "Street Fighter V (Cringe)",
-            "Street Fighter 6"
+            "Street Fighter 6",
+            "Capcom vs SNK 2"
         ]
     return sfgames[random.randint(0, len(sfgames)-1)]
 
