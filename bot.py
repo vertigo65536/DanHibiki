@@ -375,18 +375,26 @@ async def honeypot(message):
         except:
             print(-1)
         bot_msg = await message.channel.send("Reply to this message with ONLY a linked channel, to be used as the bot honeypot.")
-    await channel.send("This channel is a bot honeypot.\n Do not post ANYTHING in here, you will automatically be banned.")
+    honeypot_message = await channel.send("This channel is a bot honeypot.\n Do not post ANYTHING in here, you will automatically be banned. \n\n 🍯Bots murdered: 0")
     updateDBEntry(message, "honeypot", channel_id)
+    updateDBEntry(message, "honeypot_message", honeypot_message.id)
+    updateDBEntry(message, "honeypot_counter", 0)
+    print(fetchDB(message))
     HONEYPOT[message.guild.id] = channel_id
 
 async def handleMessage(message):
     try:
         if str(message.channel.id) == HONEYPOT[str(message.guild.id)]:
-            await message.author.ban(reason="Posted in honeypot channel")
-            def is_me(message):
-                return message.author == client.user
-            for channel in message.guild.text_chanels:
-                deleted = await channel.purge(limit=100, check=is_me)
+            #await message.author.ban(reason="Posted in honeypot channel")
+            #def is_me(message):
+            #    return message.author == client.user
+            #for channel in message.guild.text_chanels:
+            #    deleted = await channel.purge(limit=100, check=is_me)
+            db = fetchDB(message)
+            updateDBEntry(message, "honeypot_counter", db['honeypot_counter']+1)
+            db = fetchDB(message)
+            honeypot_message = await message.channel.fetch_message(db['honeypot_message'])
+            await honeypot_message.edit(content="This channel is a bot honeypot.\n Do not post ANYTHING in     here, you will automatically be banned. \n\n 🍯Bots murdered: "+str(db['honeypot_counter']))
     except:
         print("No honeypot set")
     command = message.content.split(" ")[0]
