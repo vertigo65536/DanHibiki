@@ -385,11 +385,9 @@ async def honeypot(message):
 async def handleMessage(message):
     try:
         if str(message.channel.id) == HONEYPOT[str(message.guild.id)]:
-            #await message.author.ban(reason="Posted in honeypot channel")
-            #def is_me(message):
-            #    return message.author == client.user
-            #for channel in message.guild.text_chanels:
-            #    deleted = await channel.purge(limit=100, check=is_me)
+            await message.author.ban(reason="Posted in honeypot channel")
+            def is_me(message):
+                return message.author == client.user
             db = fetchDB(message)
             updateDBEntry(message, "honeypot_counter", db['honeypot_counter']+1)
             db = fetchDB(message)
